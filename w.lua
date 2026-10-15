@@ -1091,6 +1091,13 @@ local function addColorPicker(owner, flag, opts)
 	return picker
 end
 
+local function maskName(name)
+	name = tostring(name or "")
+	local keep = math.min(3, #name)
+	return name:sub(1, keep) .. string.rep("*", math.clamp(#name - keep, 3, 6))
+end
+Library.MaskName = maskName
+
 local Container = {}
 Container.__index = Container
 
@@ -2535,13 +2542,6 @@ local function newTabbox(page, column)
 	end
 	return tabbox
 end
-
-local function maskName(name)
-	name = tostring(name or "")
-	local keep = math.min(3, #name)
-	return name:sub(1, keep) .. string.rep("*", math.clamp(#name - keep, 3, 6))
-end
-Library.MaskName = maskName
 
 local function executorName()
 	local name = "Unknown"
