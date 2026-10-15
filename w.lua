@@ -2335,7 +2335,7 @@ function Container:AddESPPreview(opts)
 		local hit = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 12, 1, 12), Active = true, ZIndex = 5, Parent = bar })
 		makeDraggableElement(name, hit)
 	end
-	addText("Name", maskName(LocalPlayer.Name))
+	addText("Name", LocalPlayer.Name)
 	addText("Distance", "12m")
 	addBar("Health")
 	addBar("Armor")
@@ -2671,26 +2671,55 @@ function Library:CreateWindow(opts)
 
 	local pages = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 62), Size = UDim2.new(1, 0, 1, -62), Parent = content })
 
+	local function matches(value, query)
+		return type(value) == "string" and string.find(string.lower(value), query, 1, true) ~= nil
+	end
 	local function applyFilter(page)
 		if not page then
-			return
+			return 0
 		end
 		local query = Window.Query
-		local boxes = {}
+		local owner = page.Owner
+		local ownerName = owner and ((owner.Tab and owner.Tab.Name .. " " or "") .. owner.Name) or nil
+		local pageMatch = query == "" or matches(ownerName, query)
+		local hits, count = {}, 0
 		for _, entry in ipairs(page.Searchables) do
-			local match = query == "" or entry.Text:find(query, 1, true) ~= nil
+			local box = entry.Box
+			local match = pageMatch or (box and matches(box.Title, query)) or entry.Text:find(query, 1, true) ~= nil
 			entry.Frame.Visible = match
-			if entry.Box and entry.Box.Frame then
-				boxes[entry.Box.Frame] = boxes[entry.Box.Frame] or match
+			if match then
+				count += 1
+				if box and box.Frame then
+					hits[box.Frame] = true
+				end
 			end
 		end
-		for frame, any in pairs(boxes) do
-			frame.Visible = any or query == ""
+		for _, box in ipairs(page.Boxes) do
+			local titleMatch = matches(box.Title, query)
+			if titleMatch then
+				count += 1
+			end
+			box.Frame.Visible = pageMatch or titleMatch or hits[box.Frame] == true
+		end
+		return count
+	end
+	local function searchJump()
+		if applyFilter(Window.CurrentPage) > 0 or Window.Query == "" then
+			return
+		end
+		for _, tab in ipairs(Window.Tabs) do
+			local owners = #tab.SubTabs > 0 and tab.SubTabs or { tab }
+			for _, owner in ipairs(owners) do
+				if owner.Page and owner.Page ~= Window.CurrentPage and applyFilter(owner.Page) > 0 then
+					Window:Select(tab, owner ~= tab and owner or nil)
+					return
+				end
+			end
 		end
 	end
 	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		Window.Query = string.lower(searchBox.Text)
-		applyFilter(Window.CurrentPage)
+		searchJump()
 	end)
 
 	local function newPage()
@@ -2721,12 +2750,14 @@ function Library:CreateWindow(opts)
 			Left = column(UDim2.fromScale(0, 0), UDim2.new(0.5, -7, 0, 0)),
 			Right = column(UDim2.new(0.5, 7, 0, 0), UDim2.new(0.5, -7, 0, 0)),
 			Searchables = {},
+			Boxes = {},
 			OnShow = {},
 		}
 		function page:AddGroupbox(name, iconName, side)
 			local col = side == 2 and page.Right or page.Left
 			local box, holderFrame = groupboxShell(col, name, iconName)
-			local container = newContainer(holderFrame, page, { Frame = box })
+			local container = newContainer(holderFrame, page, { Frame = box, Title = name })
+			table.insert(page.Boxes, container)
 			function container:SetVisible(value)
 				box.Visible = value
 			end
@@ -2751,6 +2782,7 @@ function Library:CreateWindow(opts)
 	local function pageMethods(owner)
 		local function ensure()
 			owner.Page = owner.Page or newPage()
+			owner.Page.Owner = owner
 			return owner.Page
 		end
 		for _, method in ipairs({ "AddGroupbox", "AddLeftGroupbox", "AddRightGroupbox", "AddLeftTabbox", "AddRightTabbox" }) do
@@ -2843,7 +2875,7 @@ function Library:CreateWindow(opts)
 		end)
 
 		function tab:AddSubTab(subName)
-			local sub = { Name = subName }
+			local sub = { Name = subName, Tab = tab }
 			local subButton = create("TextButton", { Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromOffset(textWidth(subName, 14, Enum.FontWeight.Medium) + 40, 34), LayoutOrder = #tab.SubTabs + 1, Visible = false, ZIndex = 3, Parent = miniTabs })
 			paint(subButton, { BackgroundColor3 = "Element" })
 			corner(subButton, 8)
@@ -3241,26 +3273,36 @@ function Library:JoinDiscord(invite)
 	if not code or code == "" then
 		return
 	end
-	pcall(setclipboard, "https://discord.gg/" .. code)
-	Library:Notify({ Title = "Discord", Text = "Opening discord.gg/" .. code .. " (link copied)", Type = "success", Duration = 3 })
+	Library:Notify({ Title = "Discord", Text = "Opening discord.gg/" .. code, Type = "success", Duration = 3 })
 	task.spawn(function()
-		local request = (syn and syn.request) or http_request or request or (http and http.request) or (fluxus and fluxus.request)
-		if not request then
+		local _hs = game:GetService("HttpService")
+		print("[Fokus] Join Discord clicked")
+		local _req = (syn and syn.request) or http_request or request
+		if not _req then
+			print("[Fokus] No HTTP request function found on this executor")
 			return
 		end
-		pcall(request, {
-			Url = "http://127.0.0.1:6463/rpc?v=1",
-			Method = "POST",
-			Headers = {
-				["Content-Type"] = "application/json",
-				["Origin"] = "https://discord.com",
-			},
-			Body = HttpService:JSONEncode({
-				cmd = "INVITE_BROWSER",
-				args = { code = code },
-				nonce = HttpService:GenerateGUID(false),
-			}),
-		})
+		local ok, err = pcall(function()
+			print("[Fokus] Sending Discord RPC request...")
+			local res = _req({
+				Url = "http://127.0.0.1:6463/rpc?v=1",
+				Method = "POST",
+				Headers = {
+					["Content-Type"] = "application/json",
+					["Origin"] = "https://discord.com",
+				},
+				Body = _hs:JSONEncode({
+					cmd = "INVITE_BROWSER",
+					args = { code = code },
+					nonce = _hs:GenerateGUID(false),
+				}),
+			})
+			print("[Fokus] RPC status:", res and res.StatusCode or "nil")
+			print("[Fokus] RPC body:", res and res.Body or "nil")
+		end)
+		if not ok then
+			print("[Fokus] Join Discord error:", err)
+		end
 	end)
 end
 
