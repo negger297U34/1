@@ -12,8 +12,8 @@ local Lighting = cloneref(game:GetService("Lighting"))
 local LocalPlayer = Players.LocalPlayer
 
 local Library = {
-	Name = "Commission",
-	Folder = "Commission",
+	Name = "Fokus",
+	Folder = "Fokus",
 	Flags = {},
 	Options = {},
 	Toggles = {},
@@ -34,13 +34,13 @@ local Library = {
 local Theme = {
 	Accent = Color3.fromHex("B40250"),
 	Glow = Color3.fromHex("B40250"),
-	Sidebar = Color3.fromRGB(5, 5, 7),
-	SidebarTab = Color3.fromRGB(17, 17, 20),
-	Content = Color3.fromRGB(12, 12, 15),
-	Groupbox = Color3.fromRGB(17, 17, 21),
-	Element = Color3.fromRGB(25, 25, 30),
-	ElementHover = Color3.fromRGB(33, 33, 39),
-	Border = Color3.fromRGB(38, 38, 45),
+	Sidebar = Color3.fromRGB(7, 7, 9),
+	SidebarTab = Color3.fromRGB(16, 16, 19),
+	Content = Color3.fromRGB(13, 13, 16),
+	Groupbox = Color3.fromRGB(19, 19, 23),
+	Element = Color3.fromRGB(28, 28, 33),
+	ElementHover = Color3.fromRGB(37, 37, 43),
+	Border = Color3.fromRGB(42, 42, 50),
 	Text = Color3.fromRGB(236, 236, 242),
 	SubText = Color3.fromRGB(150, 150, 162),
 	Disabled = Color3.fromRGB(88, 88, 98),
@@ -165,7 +165,10 @@ local function text(props)
 	props.Class = nil
 	local weight = props.Weight or Enum.FontWeight.Regular
 	props.Weight = nil
-	local colorKey = props.ColorKey or "Text"
+	local colorKey = props.ColorKey
+	if colorKey == nil then
+		colorKey = "Text"
+	end
 	props.ColorKey = nil
 	props.BackgroundTransparency = props.BackgroundTransparency or 1
 	props.TextSize = props.TextSize or 14
@@ -366,9 +369,9 @@ local function newGui(name, order)
 	return gui
 end
 
-Library.Gui = newGui("CommissionUI", 100)
-Library.HudGui = newGui("CommissionHUD", 95)
-Library.PopupGui = newGui("CommissionPopups", 110)
+Library.Gui = newGui("FokusUI", 100)
+Library.HudGui = newGui("FokusHUD", 95)
+Library.PopupGui = newGui("FokusPopups", 110)
 Library.PopupRoot = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = Library.PopupGui })
 
 local ScaleObjects = {}
@@ -393,7 +396,8 @@ local function refreshScale()
 		return
 	end
 	local viewport = camera.ViewportSize
-	local fit = math.min((viewport.X - 24) / 820, (viewport.Y - 24) / 560)
+	local base = Library.BaseSize or Vector2.new(860, 580)
+	local fit = math.min((viewport.X - 24) / base.X, (viewport.Y - 24) / base.Y)
 	Library:SetScale(math.clamp(math.min(fit, 1) * Library.UserScale, 0.4, 2))
 end
 
@@ -2261,24 +2265,57 @@ local function newContainer(holder, page, extra)
 	return container
 end
 
+local function shade(frame, low)
+	return create("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(low or 0.82, low or 0.82, (low or 0.82) + 0.02)), Parent = frame })
+end
+
+local function fadeLine(parent, props, edges)
+	local colorKey = props.ColorKey or "Border"
+	props.ColorKey = nil
+	local line = create("Frame", props)
+	line.Parent = parent
+	paint(line, { BackgroundColor3 = colorKey })
+	if edges == "both" then
+		create("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) }), Rotation = props.Size.X.Offset == 1 and 90 or 0, Parent = line })
+	elseif edges == "right" then
+		create("UIGradient", { Transparency = NumberSequence.new(0, 1), Parent = line })
+	end
+	return line
+end
+
+local function iconTile(parent, iconName, size, props)
+	props = props or {}
+	props.Size = UDim2.fromOffset(size, size)
+	props.Parent = parent
+	local tileFrame = create("Frame", props)
+	paint(tileFrame, { BackgroundColor3 = "Accent" })
+	tileFrame.BackgroundTransparency = 0.84
+	corner(tileFrame, math.floor(size / 3.2))
+	icon(iconName, math.floor(size * 0.5), "Accent", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = tileFrame.ZIndex + 1, Parent = tileFrame })
+	return tileFrame
+end
+
 local function groupboxShell(column, name, iconName)
 	local frame = create("Frame", { Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = column })
 	paint(frame, { BackgroundColor3 = "Groupbox" })
-	corner(frame, 6)
+	corner(frame, 9)
 	stroke(frame, "Border")
-	local header = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), Parent = frame })
-	local titleX = 14
+	shade(frame, 0.86)
+	local header = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 46), Parent = frame })
+	local titleX = 16
 	if iconName then
-		icon(iconName, 15, "Accent", { Position = UDim2.fromOffset(14, 12), Parent = header })
-		titleX = 36
+		iconTile(header, iconName, 24, { Position = UDim2.fromOffset(13, 11) })
+		titleX = 46
+	else
+		local bar = create("Frame", { Position = UDim2.fromOffset(14, 16), Size = UDim2.fromOffset(3, 14), Parent = header })
+		paint(bar, { BackgroundColor3 = "Accent" })
+		corner(bar, 2)
+		titleX = 26
 	end
 	text({ Text = name or "", Weight = Enum.FontWeight.SemiBold, Position = UDim2.fromOffset(titleX, 0), Size = UDim2.new(1, -titleX - 14, 1, 0), Parent = header })
-	local line = create("Frame", { Position = UDim2.fromOffset(14, 39), Size = UDim2.new(1, -28, 0, 1), Parent = frame })
-	paint(line, { BackgroundColor3 = "Border" })
-	local accentLine = create("Frame", { Position = UDim2.fromOffset(14, 39), Size = UDim2.fromOffset(36, 1), Parent = frame })
-	paint(accentLine, { BackgroundColor3 = "Accent" })
-	local holder = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 46), Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = frame })
-	padding(holder, 14, 14, 0, 12)
+	fadeLine(frame, { Position = UDim2.fromOffset(0, 46), Size = UDim2.new(1, 0, 0, 1) }, "right")
+	local holder = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 54), Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = frame })
+	padding(holder, 16, 16, 0, 14)
 	list(holder, 4)
 	return frame, holder
 end
@@ -2286,40 +2323,68 @@ end
 local function newTabbox(page, column)
 	local frame = create("Frame", { Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = column })
 	paint(frame, { BackgroundColor3 = "Groupbox" })
-	corner(frame, 6)
+	corner(frame, 9)
 	stroke(frame, "Border")
-	local header = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -16, 0, 30), Parent = frame })
-	list(header, 6, Enum.FillDirection.Horizontal)
-	local line = create("Frame", { Position = UDim2.fromOffset(14, 41), Size = UDim2.new(1, -28, 0, 1), Parent = frame })
-	paint(line, { BackgroundColor3 = "Border" })
+	shade(frame, 0.86)
+	local header = create("Frame", { Position = UDim2.fromOffset(10, 9), Size = UDim2.new(1, -20, 0, 32), Parent = frame })
+	paint(header, { BackgroundColor3 = "Content" })
+	corner(header, 7)
+	padding(header, 3, 3, 3, 3)
+	list(header, 3, Enum.FillDirection.Horizontal)
 	local tabbox = { Tabs = {} }
 	local function select(tab)
 		for _, other in ipairs(tabbox.Tabs) do
 			local on = other == tab
 			other.Holder.Visible = on
-			paint(other.Button, { TextColor3 = on and "Accent" or "SubText", BackgroundColor3 = on and "Element" or "Groupbox" })
+			other.Button.BackgroundTransparency = on and 0 or 1
+			paint(other.Button, { TextColor3 = on and "Accent" or "SubText", BackgroundColor3 = "Element" })
 		end
 	end
 	function tabbox:AddTab(name)
-		local button = text({ Class = "TextButton", Text = name, TextSize = 13, Weight = Enum.FontWeight.Medium, TextXAlignment = Enum.TextXAlignment.Center, AutoButtonColor = false, BackgroundTransparency = 0, Size = UDim2.fromOffset(0, 28), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = #tabbox.Tabs + 1, Parent = header })
+		local count = #tabbox.Tabs + 1
+		local button = text({ Class = "TextButton", Text = name, TextSize = 13, Weight = Enum.FontWeight.Medium, TextXAlignment = Enum.TextXAlignment.Center, AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = count, Parent = header })
 		corner(button, 5)
-		padding(button, 12, 12, 0, 0)
-		local holder = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 48), Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Visible = false, Parent = frame })
-		padding(holder, 14, 14, 0, 12)
+		padding(button, 14, 14, 0, 0)
+		local holder = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 52), Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Visible = false, Parent = frame })
+		padding(holder, 16, 16, 0, 14)
 		list(holder, 4)
 		local tab = newContainer(holder, page, { Button = button })
 		table.insert(tabbox.Tabs, tab)
 		button.MouseButton1Click:Connect(function()
 			select(tab)
 		end)
-		if #tabbox.Tabs == 1 then
+		if count == 1 then
 			select(tab)
 		else
-			paint(button, { TextColor3 = "SubText", BackgroundColor3 = "Groupbox" })
+			paint(button, { TextColor3 = "SubText", BackgroundColor3 = "Element" })
 		end
 		return tab
 	end
 	return tabbox
+end
+
+local function maskName(name)
+	name = tostring(name or "")
+	local keep = math.min(3, #name)
+	return name:sub(1, keep) .. string.rep("*", math.clamp(#name - keep, 3, 6))
+end
+Library.MaskName = maskName
+
+local function executorName()
+	local name = "Unknown"
+	pcall(function()
+		if identifyexecutor then
+			name = (identifyexecutor())
+		elseif getexecutorname then
+			name = getexecutorname()
+		end
+	end)
+	return tostring(name)
+end
+
+local function formatClock(seconds)
+	seconds = math.max(0, math.floor(seconds))
+	return string.format("%02d:%02d:%02d", seconds // 3600, seconds // 60 % 60, seconds % 60)
 end
 
 Library.OpenChanged = {}
@@ -2328,109 +2393,121 @@ function Library:CreateWindow(opts)
 	opts = opts or {}
 	Library.Name = opts.Title or Library.Name
 	Library.Folder = opts.Folder or Library.Folder
-	local width, height = opts.Width or 820, opts.Height or 560
-	local sidebarWidth = 210
+	local width, height = opts.Width or 860, opts.Height or 580
+	Library.BaseSize = Vector2.new(width, height)
+	local sidebarWidth = 214
 	local Window = { Tabs = {}, Pages = {}, Query = "" }
 
 	local holder = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(width, height), Parent = Library.Gui })
 	scaled(holder)
 	Window.Holder = holder
 
-	local glow = create("ImageLabel", {
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18245826428",
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
-		Position = UDim2.fromOffset(-24, -24),
-		Size = UDim2.new(1, 48, 1, 48),
-		ImageTransparency = 0.15,
-		ZIndex = 0,
-		Parent = holder,
-	})
-	paint(glow, { ImageColor3 = "Glow" })
+	local glow = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = holder })
+	for index = 1, 22 do
+		local ring = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(-index, -index), Size = UDim2.new(1, index * 2, 1, index * 2), Parent = glow })
+		create("UICorner", { CornerRadius = UDim.new(0, 11 + index), Parent = ring })
+		local fade = 1 - (index - 1) / 22
+		local ringStroke = create("UIStroke", { Transparency = 1 - 0.32 * fade * fade * fade, Thickness = 1, Parent = ring })
+		paint(ringStroke, { Color = "Glow" })
+	end
 	Window.Glow = glow
 
-	local main = create("CanvasGroup", { Size = UDim2.fromScale(1, 1), Parent = holder })
+	local main = create("Frame", { Size = UDim2.fromScale(1, 1), ClipsDescendants = true, Parent = holder })
 	paint(main, { BackgroundColor3 = "Content" })
-	corner(main, 7)
-	local border = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 10, Parent = holder })
-	corner(border, 7)
-	stroke(border, "Accent", 0.1, 1)
+	corner(main, 11)
+	stroke(main, "Border")
 
 	local sidebar = create("Frame", { Size = UDim2.new(0, sidebarWidth, 1, 0), ZIndex = 2, Parent = main })
 	paint(sidebar, { BackgroundColor3 = "Sidebar" })
-	local divider = create("Frame", { Position = UDim2.fromOffset(sidebarWidth, 0), Size = UDim2.new(0, 1, 1, 0), ZIndex = 3, Parent = main })
-	paint(divider, { BackgroundColor3 = "Accent" })
+	corner(sidebar, 11)
+	local sidebarFill = create("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 12, 1, 0), ZIndex = 2, Parent = sidebar })
+	paint(sidebarFill, { BackgroundColor3 = "Sidebar" })
+	fadeLine(main, { Position = UDim2.fromOffset(sidebarWidth, 0), Size = UDim2.new(0, 1, 1, 0), ZIndex = 3, ColorKey = "Accent" }, "both")
 
-	local brand = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 72), ZIndex = 2, Parent = sidebar })
-	local logo = create("ImageLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 18), Size = UDim2.fromOffset(36, 36), ScaleType = Enum.ScaleType.Fit, ZIndex = 2, Parent = brand })
+	local brand = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 78), ZIndex = 3, Parent = sidebar })
+	local logoTile = create("Frame", { Position = UDim2.fromOffset(18, 21), Size = UDim2.fromOffset(36, 36), ZIndex = 3, Parent = brand })
 	if opts.Logo then
-		applyIcon(logo, opts.Logo)
+		logoTile.BackgroundTransparency = 1
+		logoTile.Position = UDim2.fromOffset(14, 17)
+		logoTile.Size = UDim2.fromOffset(44, 44)
+		local logo = create("ImageLabel", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Fit, ZIndex = 4, Parent = logoTile })
+		local raw = tostring(opts.Logo)
+		local asset = (#raw > 100 or raw:find("^https?://") or raw:find("%.png$") or raw:find("%.jpg$")) and Library:LoadImage(raw, "logo") or nil
+		if asset then
+			logo.Image = asset
+		else
+			applyIcon(logo, raw)
+		end
 	else
-		applyIcon(logo, "eye")
-		paint(logo, { ImageColor3 = "Accent" })
+		paint(logoTile, { BackgroundColor3 = "Accent" })
+		corner(logoTile, 10)
+		create("UIGradient", { Rotation = 45, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(120, 120, 125)), Parent = logoTile })
+		softGlow(logoTile, 10, 7, 0.28)
+		local letter = text({ Text = string.upper((opts.Title or "C"):sub(1, 1)), TextSize = 19, Weight = Enum.FontWeight.Heavy, ColorKey = false, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), ZIndex = 4, Parent = logoTile })
+		letter.TextStrokeTransparency = 1
 	end
-	text({ Text = opts.Title or "Commission", TextSize = 17, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(60, 18), Size = UDim2.new(1, -66, 0, 20), ZIndex = 2, Parent = brand })
-	text({ Text = opts.Subtitle or "", TextSize = 12, ColorKey = "SubText", Position = UDim2.fromOffset(60, 38), Size = UDim2.new(1, -66, 0, 14), ZIndex = 2, Parent = brand })
+	local hasSubtitle = type(opts.Subtitle) == "string" and opts.Subtitle ~= ""
+	text({ Text = opts.Title or "Fokus", TextSize = 17, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(66, hasSubtitle and 21 or 29), Size = UDim2.new(1, -76, 0, 20), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = brand })
+	if hasSubtitle then
+		text({ Text = opts.Subtitle, TextSize = 12, ColorKey = "Accent", Position = UDim2.fromOffset(66, 41), Size = UDim2.new(1, -76, 0, 14), ZIndex = 3, Parent = brand })
+	end
 	makeDraggable(brand, holder)
 
+	text({ Text = "MENU", TextSize = 11, Weight = Enum.FontWeight.SemiBold, ColorKey = "Disabled", Position = UDim2.fromOffset(22, 86), Size = UDim2.new(1, -44, 0, 14), ZIndex = 3, Parent = sidebar })
 	local tabList = create("ScrollingFrame", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(0, 80),
-		Size = UDim2.new(1, 0, 1, -80 - 112),
+		Position = UDim2.fromOffset(0, 106),
+		Size = UDim2.new(1, 0, 1, -106 - 92),
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 0,
-		ZIndex = 2,
+		ZIndex = 3,
 		Parent = sidebar,
 	})
-	padding(tabList, 14, 14, 4, 4)
-	list(tabList, 8)
+	padding(tabList, 12, 12, 2, 2)
+	list(tabList, 4)
 
-	local profileLine = create("Frame", { Position = UDim2.new(0, 14, 1, -104), Size = UDim2.new(1, -28, 0, 1), ZIndex = 2, Parent = sidebar })
-	paint(profileLine, { BackgroundColor3 = "Accent" })
+	local profile = create("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -14), Size = UDim2.new(1, -24, 0, 62), ZIndex = 3, Parent = sidebar })
+	paint(profile, { BackgroundColor3 = "SidebarTab" })
+	corner(profile, 10)
+	stroke(profile, "Border")
 	local avatar = create("ImageLabel", {
-		Position = UDim2.new(0, 14, 1, -88),
-		Size = UDim2.fromOffset(46, 46),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 11, 0.5, 0),
+		Size = UDim2.fromOffset(38, 38),
 		Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(LocalPlayer.UserId) .. "&w=150&h=150",
-		ZIndex = 2,
-		Parent = sidebar,
+		ZIndex = 4,
+		Parent = profile,
 	})
 	paint(avatar, { BackgroundColor3 = "Element" })
 	corner(avatar, "full")
-	stroke(avatar, "Accent", 0.3)
-	text({ Text = "@" .. LocalPlayer.Name, TextSize = 14, Weight = Enum.FontWeight.SemiBold, ColorKey = "Accent", Position = UDim2.new(0, 68, 1, -86), Size = UDim2.new(1, -74, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 2, Parent = sidebar })
-	text({ Text = LocalPlayer.DisplayName, TextSize = 12, ColorKey = "SubText", Position = UDim2.new(0, 68, 1, -66), Size = UDim2.new(1, -74, 0, 14), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 2, Parent = sidebar })
-	local expires = text({ Text = "", TextSize = 12, ColorKey = "SubText", Position = UDim2.new(0, 68, 1, -50), Size = UDim2.new(1, -74, 0, 14), RichText = true, ZIndex = 2, Parent = sidebar })
-	local executorName = "Unknown"
-	pcall(function()
-		if identifyexecutor then
-			executorName = (identifyexecutor())
-		elseif getexecutorname then
-			executorName = getexecutorname()
-		end
-	end)
-	text({ Text = tostring(executorName), TextSize = 11, ColorKey = "Disabled", TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -12, 1, -12), Size = UDim2.new(1, -24, 0, 14), ZIndex = 2, Parent = sidebar })
+	stroke(avatar, "Accent", 0.35, 1.5)
+	local online = create("Frame", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(0, 49, 0.5, 19), Size = UDim2.fromOffset(10, 10), BackgroundColor3 = Color3.fromRGB(70, 210, 120), ZIndex = 5, Parent = profile })
+	corner(online, "full")
+	stroke(online, "SidebarTab", 0, 2)
+	text({ Text = maskName(LocalPlayer.Name), TextSize = 14, Weight = Enum.FontWeight.SemiBold, Position = UDim2.fromOffset(60, 13), Size = UDim2.new(1, -68, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4, Parent = profile })
+	icon("clock", 11, "Accent", { Position = UDim2.fromOffset(60, 36), ZIndex = 4, Parent = profile })
+	local expires = text({ Text = "", TextSize = 12, ColorKey = "SubText", Position = UDim2.fromOffset(75, 33), Size = UDim2.new(0.5, -40, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4, Parent = profile })
+	text({ Text = executorName(), TextSize = 11, ColorKey = "Disabled", TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 34), Size = UDim2.new(0.42, 0, 0, 14), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4, Parent = profile })
 	function Window:SetExpires(value)
-		expires.Text = 'Expires: <font color="#' .. Theme.Text:ToHex() .. '">' .. tostring(value) .. "</font>"
+		expires.Text = tostring(value)
 	end
 	Window:SetExpires(opts.Expires or "Lifetime")
 
 	local content = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(sidebarWidth + 1, 0), Size = UDim2.new(1, -sidebarWidth - 1, 1, 0), ZIndex = 1, Parent = main })
-	local topBar = create("Frame", { Size = UDim2.new(1, 0, 0, 56), ZIndex = 2, Parent = content })
-	paint(topBar, { BackgroundColor3 = "Content" })
-	local topLine = create("Frame", { Position = UDim2.new(0, 0, 1, -1), Size = UDim2.new(1, 0, 0, 1), ZIndex = 2, Parent = topBar })
-	paint(topLine, { BackgroundColor3 = "Border" })
+	local topBar = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 62), ZIndex = 2, Parent = content })
+	fadeLine(topBar, { Position = UDim2.new(0, 0, 1, -1), Size = UDim2.new(1, 0, 0, 1), ZIndex = 2 }, "both")
 	makeDraggable(topBar, holder)
-	local miniTabs = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 11), Size = UDim2.new(1, -200, 0, 34), ZIndex = 3, Parent = topBar })
-	list(miniTabs, 8, Enum.FillDirection.Horizontal)
+	local pageTitle = text({ Text = "", TextSize = 17, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(22, 0), Size = UDim2.new(1, -230, 1, 0), ZIndex = 3, Parent = topBar })
+	local miniTabs = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(18, 14), Size = UDim2.new(1, -220, 0, 34), ZIndex = 3, Parent = topBar })
+	list(miniTabs, 6, Enum.FillDirection.Horizontal)
 
-	local search = create("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 11), Size = UDim2.fromOffset(160, 34), ZIndex = 3, Parent = topBar })
+	local search = create("Frame", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -18, 0, 14), Size = UDim2.fromOffset(172, 34), ZIndex = 3, Parent = topBar })
 	paint(search, { BackgroundColor3 = "Element" })
-	corner(search, 5)
+	corner(search, 8)
 	local searchStroke = stroke(search, "Border")
-	icon("search", 14, "SubText", { Position = UDim2.fromOffset(10, 10), ZIndex = 3, Parent = search })
-	local searchBox = text({ Class = "TextBox", Text = "", PlaceholderText = "search...", TextSize = 13, ClearTextOnFocus = false, Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), ZIndex = 3, Parent = search })
+	icon("search", 14, "SubText", { Position = UDim2.fromOffset(11, 10), ZIndex = 3, Parent = search })
+	local searchBox = text({ Class = "TextBox", Text = "", PlaceholderText = "Search...", TextSize = 13, ClearTextOnFocus = false, Position = UDim2.fromOffset(33, 0), Size = UDim2.new(1, -42, 1, 0), ZIndex = 3, Parent = search })
 	paint(searchBox, { TextColor3 = "Text", PlaceholderColor3 = "SubText" })
 	searchBox.Focused:Connect(function()
 		searchStroke.Color = Theme.Accent
@@ -2439,7 +2516,7 @@ function Library:CreateWindow(opts)
 		searchStroke.Color = Theme.Border
 	end)
 
-	local pages = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 56), Size = UDim2.new(1, 0, 1, -56), Parent = content })
+	local pages = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 62), Size = UDim2.new(1, 0, 1, -62), Parent = content })
 
 	local function applyFilter(page)
 		if not page then
@@ -2469,13 +2546,14 @@ function Library:CreateWindow(opts)
 			Size = UDim2.fromScale(1, 1),
 			CanvasSize = UDim2.new(),
 			AutomaticCanvasSize = Enum.AutomaticSize.Y,
-			ScrollBarThickness = 3,
+			ScrollBarThickness = 2,
 			ScrollingDirection = Enum.ScrollingDirection.Y,
+			VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
 			Visible = false,
 			Parent = pages,
 		})
 		paint(frame, { ScrollBarImageColor3 = "Accent" })
-		padding(frame, 16, 16, 16, 16)
+		padding(frame, 18, 16, 18, 18)
 		local columns = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = frame })
 		local function column(x, w)
 			local col = create("Frame", { BackgroundTransparency = 1, Position = x, Size = w, AutomaticSize = Enum.AutomaticSize.Y, Parent = columns })
@@ -2484,6 +2562,7 @@ function Library:CreateWindow(opts)
 		end
 		local page = {
 			Frame = frame,
+			Columns = columns,
 			Left = column(UDim2.fromScale(0, 0), UDim2.new(0.5, -7, 0, 0)),
 			Right = column(UDim2.new(0.5, 7, 0, 0), UDim2.new(0.5, -7, 0, 0)),
 			Searchables = {},
@@ -2537,19 +2616,21 @@ function Library:CreateWindow(opts)
 			other.Bar.Visible = on
 			other.BarGlow.Visible = on
 			tween(other.Fade, { BackgroundTransparency = on and 0 or 1 }, 0.2)
+			other.Button.BackgroundTransparency = 1
 			paint(other.Label, { TextColor3 = on and "Text" or "SubText" })
 			paint(other.Icon, { ImageColor3 = on and "Accent" or "SubText" })
 			for _, button in ipairs(other.MiniButtons) do
 				button.Visible = on
 			end
 		end
+		pageTitle.Text = tab.Name
+		pageTitle.Visible = #tab.SubTabs == 0
 		for _, entry in ipairs(tab.SubTabs) do
 			local on = entry == sub
 			entry.Bar.Visible = on
+			entry.Button.BackgroundTransparency = on and 0 or 1
 			tween(entry.Fade, { BackgroundTransparency = on and 0 or 1 }, 0.2)
-			paint(entry.Label, { TextColor3 = on and "Accent" or "SubText" })
-			entry.Stroke.Color = on and Theme.Accent or Theme.Border
-			entry.Stroke.Transparency = on and 0.4 or 0
+			paint(entry.Label, { TextColor3 = on and "Text" or "SubText" })
 		end
 		if sub then
 			tab.LastSub = sub
@@ -2561,49 +2642,42 @@ function Library:CreateWindow(opts)
 		Window.CurrentPage = page
 		Window.CurrentTab, Window.CurrentSub = tab, sub
 		applyFilter(page)
-		for _, fn in ipairs(page.OnShow) do
-			task.spawn(fn)
-		end
 		for _, other in ipairs(Window.Pages) do
-			if other ~= page then
-				for _, fn in ipairs(other.OnShow) do
-					task.spawn(fn)
-				end
+			for _, fn in ipairs(other.OnShow) do
+				task.spawn(fn)
 			end
 		end
 	end
 
-	local function fadeGradient(frame)
-		local g = create("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 1) }), Parent = frame })
-		return g
+	local function accentFade(parent, radius, zindex)
+		local fade = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = zindex, Parent = parent })
+		paint(fade, { BackgroundColor3 = "Accent" })
+		corner(fade, radius)
+		create("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.62), NumberSequenceKeypoint.new(0.7, 0.94), NumberSequenceKeypoint.new(1, 1) }), Parent = fade })
+		return fade
 	end
 
 	function Window:AddTab(name, iconName)
 		local tab = { Name = name, SubTabs = {}, MiniButtons = {} }
-		local button = create("TextButton", { Text = "", AutoButtonColor = false, Size = UDim2.new(1, 0, 0, 42), LayoutOrder = #Window.Tabs + 1, ZIndex = 2, Parent = tabList })
+		local button = create("TextButton", { Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), LayoutOrder = #Window.Tabs + 1, ZIndex = 3, Parent = tabList })
 		paint(button, { BackgroundColor3 = "SidebarTab" })
-		corner(button, 6)
-		stroke(button, "Border", 0.2)
-		create("UIGradient", { Rotation = 0, Transparency = NumberSequence.new(0, 0.35), Parent = button })
-		local fade = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = button })
-		paint(fade, { BackgroundColor3 = "Accent" })
-		corner(fade, 6)
-		fadeGradient(fade)
-		local bar = create("Frame", { Position = UDim2.fromOffset(0, 6), Size = UDim2.new(0, 3, 1, -12), Visible = false, ZIndex = 4, Parent = button })
+		corner(button, 8)
+		local fade = accentFade(button, 8, 3)
+		local bar = create("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.new(0, 3, 0, 20), Visible = false, ZIndex = 5, Parent = button })
 		paint(bar, { BackgroundColor3 = "Accent" })
 		corner(bar, 2)
-		local barGlow = softGlow(bar, 2, 4, 0.5)
+		local barGlow = softGlow(bar, 2, 6, 0.45)
 		barGlow.Visible = false
-		tab.Icon = icon(iconName, 17, "SubText", { Position = UDim2.fromOffset(16, 12), ZIndex = 3, Parent = button })
-		tab.Label = text({ Text = name, TextSize = 14, Weight = Enum.FontWeight.Medium, ColorKey = "SubText", Position = UDim2.fromOffset(iconName and 44 or 16, 0), Size = UDim2.new(1, -50, 1, 0), ZIndex = 3, Parent = button })
-		tab.Bar, tab.BarGlow, tab.Fade = bar, barGlow, fade
+		tab.Icon = icon(iconName, 17, "SubText", { Position = UDim2.fromOffset(16, 11), ZIndex = 4, Parent = button })
+		tab.Label = text({ Text = name, TextSize = 14, Weight = Enum.FontWeight.Medium, ColorKey = "SubText", Position = UDim2.fromOffset(iconName and 45 or 16, 0), Size = UDim2.new(1, -52, 1, 0), ZIndex = 4, Parent = button })
+		tab.Button, tab.Bar, tab.BarGlow, tab.Fade = button, bar, barGlow, fade
 		tab.Ensure = pageMethods(tab)
 		hover(button, function()
 			if Window.CurrentTab ~= tab then
-				tween(button, { BackgroundColor3 = Theme.ElementHover }, 0.12)
+				tween(button, { BackgroundTransparency = 0.4 }, 0.12)
 			end
 		end, function()
-			tween(button, { BackgroundColor3 = Theme.SidebarTab }, 0.15)
+			tween(button, { BackgroundTransparency = 1 }, 0.15)
 		end)
 		button.MouseButton1Click:Connect(function()
 			Window:Select(tab)
@@ -2611,20 +2685,25 @@ function Library:CreateWindow(opts)
 
 		function tab:AddSubTab(subName)
 			local sub = { Name = subName }
-			local subButton = create("TextButton", { Text = "", AutoButtonColor = false, Size = UDim2.fromOffset(textWidth(subName, 14, Enum.FontWeight.Medium) + 46, 34), LayoutOrder = #tab.SubTabs + 1, Visible = false, ZIndex = 3, Parent = miniTabs })
+			local subButton = create("TextButton", { Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromOffset(textWidth(subName, 14, Enum.FontWeight.Medium) + 40, 34), LayoutOrder = #tab.SubTabs + 1, Visible = false, ZIndex = 3, Parent = miniTabs })
 			paint(subButton, { BackgroundColor3 = "Element" })
-			corner(subButton, 5)
-			sub.Stroke = stroke(subButton, "Border")
-			local subFade = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 3, Parent = subButton })
-			paint(subFade, { BackgroundColor3 = "Accent" })
-			corner(subFade, 5)
-			fadeGradient(subFade)
-			local subBar = create("Frame", { Position = UDim2.fromOffset(0, 5), Size = UDim2.new(0, 3, 1, -10), Visible = false, ZIndex = 5, Parent = subButton })
+			corner(subButton, 8)
+			local subFade = accentFade(subButton, 8, 3)
+			local subBar = create("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.new(0, 3, 0, 16), Visible = false, ZIndex = 5, Parent = subButton })
 			paint(subBar, { BackgroundColor3 = "Accent" })
 			corner(subBar, 2)
 			sub.Label = text({ Text = subName, TextSize = 14, Weight = Enum.FontWeight.Medium, ColorKey = "SubText", TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), ZIndex = 4, Parent = subButton })
-			sub.Bar, sub.Fade = subBar, subFade
+			sub.Button, sub.Bar, sub.Fade = subButton, subBar, subFade
 			sub.Ensure = pageMethods(sub)
+			hover(subButton, function()
+				if Window.CurrentSub ~= sub then
+					tween(subButton, { BackgroundTransparency = 0.5 }, 0.12)
+				end
+			end, function()
+				if Window.CurrentSub ~= sub then
+					tween(subButton, { BackgroundTransparency = 1 }, 0.15)
+				end
+			end)
 			subButton.MouseButton1Click:Connect(function()
 				Window:Select(tab, sub)
 			end)
@@ -2648,136 +2727,268 @@ function Library:CreateWindow(opts)
 		homeOpts = homeOpts or {}
 		local tab = Window:AddTab(homeOpts.Name or "Home", homeOpts.Icon or "house")
 		local page = tab.Ensure()
-		page.Left.Parent.Visible = false
+		page.Columns.Visible = false
 		local root = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = page.Frame })
-		list(root, 12)
+		list(root, 14)
 
-		local function card(parent, height, order, tint, rotation, stops)
-			local frame = create("Frame", { Size = UDim2.new(1, 0, 0, height), LayoutOrder = order, ClipsDescendants = true, Parent = parent })
+		local function panel(parent, size, order)
+			local frame = create("Frame", { Size = size, LayoutOrder = order or 0, ClipsDescendants = true, Parent = parent })
 			paint(frame, { BackgroundColor3 = "Groupbox" })
-			corner(frame, 8)
+			corner(frame, 10)
 			stroke(frame, "Border")
-			if tint then
-				local overlay = create("Frame", { Size = UDim2.fromScale(1, 1), Parent = frame })
-				if typeof(tint) == "Color3" then
-					overlay.BackgroundColor3 = tint
-				else
-					paint(overlay, { BackgroundColor3 = tint })
-				end
-				corner(overlay, 8)
-				create("UIGradient", { Rotation = rotation or 90, Transparency = NumberSequence.new(stops), Parent = overlay })
-			end
+			shade(frame, 0.86)
 			return frame
 		end
-		local bottomGlow = { NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.55, 0.95), NumberSequenceKeypoint.new(1, 0.62) }
-		local sideGlow = { NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(0.6, 0.6), NumberSequenceKeypoint.new(1, 0.92) }
-
-		local function header(parent, title, subtitle)
-			text({ Text = title, TextSize = 15, Weight = Enum.FontWeight.SemiBold, Position = UDim2.fromOffset(14, 12), Size = UDim2.new(1, -28, 0, 18), ZIndex = 2, Parent = parent })
-			text({ Text = subtitle, TextSize = 12, ColorKey = "SubText", Position = UDim2.fromOffset(14, 31), Size = UDim2.new(1, -28, 0, 14), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 2, Parent = parent })
-		end
-
-		local function tile(parent, column, rowIndex, tileHeight, title, subtitle, onClick)
-			local button = create("TextButton", {
-				Text = "",
-				AutoButtonColor = false,
-				BackgroundTransparency = 0.15,
-				Position = UDim2.new(column * 0.5, column == 0 and 12 or 4, 0, 56 + rowIndex * (tileHeight + 8)),
-				Size = UDim2.new(0.5, -16, 0, tileHeight),
-				ZIndex = 2,
-				Parent = parent,
-			})
-			paint(button, { BackgroundColor3 = "Element" })
-			corner(button, 6)
-			stroke(button, "Border", 0.3)
-			text({ Text = title, TextSize = 14, Weight = Enum.FontWeight.SemiBold, Position = UDim2.new(0, 12, 0.5, -17), Size = UDim2.new(1, -24, 0, 18), ZIndex = 3, Parent = button })
-			local sub = text({ Text = subtitle, TextSize = 12, ColorKey = "SubText", Position = UDim2.new(0, 12, 0.5, 2), Size = UDim2.new(1, -24, 0, 14), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = button })
-			hover(button, function()
-				tween(button, { BackgroundColor3 = Theme.ElementHover }, 0.12)
-			end, function()
-				tween(button, { BackgroundColor3 = Theme.Element }, 0.15)
-			end)
-			if onClick then
-				button.MouseButton1Click:Connect(onClick)
+		local function ring(parent, size, position, transparency, key)
+			local circle = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = position, Size = UDim2.fromOffset(size, size), Parent = parent })
+			corner(circle, "full")
+			local s = create("UIStroke", { Thickness = 1.5, Transparency = transparency, Parent = circle })
+			if typeof(key) == "Color3" then
+				s.Color = key
+			else
+				paint(s, { Color = key or "Accent" })
 			end
-			return sub
+			return circle
+		end
+		local function pill(parent, label, iconName, order, dotColor)
+			local frame = create("Frame", { Size = UDim2.fromOffset(0, 24), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = order, ZIndex = 3, Parent = parent })
+			paint(frame, { BackgroundColor3 = "Element" })
+			frame.BackgroundTransparency = 0.15
+			corner(frame, "full")
+			stroke(frame, "Border")
+			padding(frame, 10, 11, 0, 0)
+			list(frame, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+			if dotColor then
+				local dot = create("Frame", { BackgroundColor3 = dotColor, Size = UDim2.fromOffset(7, 7), LayoutOrder = 1, ZIndex = 4, Parent = frame })
+				corner(dot, "full")
+			elseif iconName then
+				icon(iconName, 12, "Accent", { LayoutOrder = 1, ZIndex = 4, Parent = frame })
+			end
+			local labelInst = text({ Text = label, TextSize = 12, ColorKey = "SubText", Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = 2, ZIndex = 4, Parent = frame })
+			return labelInst
+		end
+		local function actionButton(parent, label, iconName, primary, size, position, callback)
+			local button = create("TextButton", { Text = "", AutoButtonColor = false, Size = size, Position = position or UDim2.new(), ZIndex = 3, Parent = parent })
+			corner(button, 8)
+			local s
+			if primary then
+				paint(button, { BackgroundColor3 = "Accent" })
+				create("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 175)), Parent = button })
+			else
+				paint(button, { BackgroundColor3 = "Element" })
+				s = stroke(button, "Border")
+			end
+			local row = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 4, Parent = button })
+			list(row, 7, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+			if iconName then
+				icon(iconName, 14, primary and "Text" or "Accent", { LayoutOrder = 1, ZIndex = 4, Parent = row })
+			end
+			text({ Text = label, TextSize = 13, Weight = Enum.FontWeight.SemiBold, Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = 2, ZIndex = 4, Parent = row })
+			hover(button, function()
+				if primary then
+					tween(button, { BackgroundTransparency = 0.12 }, 0.12)
+				else
+					s.Color = Theme.Accent
+					tween(button, { BackgroundColor3 = Theme.ElementHover }, 0.12)
+				end
+			end, function()
+				if primary then
+					tween(button, { BackgroundTransparency = 0 }, 0.15)
+				else
+					s.Color = Theme.Border
+					tween(button, { BackgroundColor3 = Theme.Element }, 0.15)
+				end
+			end)
+			button.MouseButton1Click:Connect(callback)
+			return button
+		end
+		local function panelHeader(parent, title, iconName)
+			iconTile(parent, iconName, 26, { Position = UDim2.fromOffset(14, 13), ZIndex = 3 })
+			text({ Text = title, TextSize = 14, Weight = Enum.FontWeight.SemiBold, Position = UDim2.fromOffset(50, 13), Size = UDim2.new(1, -64, 0, 26), ZIndex = 3, Parent = parent })
 		end
 
-		local top = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 96), LayoutOrder = 1, Parent = root })
-		local avatarCard = create("Frame", { Size = UDim2.fromOffset(96, 96), Parent = top })
-		paint(avatarCard, { BackgroundColor3 = "Groupbox" })
-		corner(avatarCard, 8)
-		stroke(avatarCard, "Border")
-		create("ImageLabel", {
-			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(4, 4),
-			Size = UDim2.new(1, -8, 1, -8),
-			Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(LocalPlayer.UserId) .. "&w=150&h=150",
-			Parent = avatarCard,
-		})
-		local greet = create("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 108, 0.5, 0), Size = UDim2.new(1, -108, 0, 66), Parent = top })
-		paint(greet, { BackgroundColor3 = "Groupbox" })
-		corner(greet, 8)
-		stroke(greet, "Border")
-		text({ Text = "Hello, " .. LocalPlayer.DisplayName, TextSize = 18, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(16, 12), Size = UDim2.new(1, -32, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd, Parent = greet })
-		text({ Text = "@" .. LocalPlayer.Name .. "  -  " .. (homeOpts.Title or Library.Name), TextSize = 13, ColorKey = "SubText", Position = UDim2.fromOffset(16, 36), Size = UDim2.new(1, -32, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd, Parent = greet })
+		local hero = panel(root, UDim2.new(1, 0, 0, 138), 1)
+		local heroTint = create("Frame", { Size = UDim2.fromScale(1, 1), Parent = hero })
+		paint(heroTint, { BackgroundColor3 = "Accent" })
+		create("UIGradient", { Rotation = 15, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.45, 0.9), NumberSequenceKeypoint.new(1, 1) }), Parent = heroTint })
+		ring(hero, 260, UDim2.new(1, -40, 0, 10), 0.88)
+		ring(hero, 180, UDim2.new(1, -40, 0, 10), 0.8)
+		ring(hero, 110, UDim2.new(1, -40, 0, 10), 0.72)
+		local heroAvatar = create("ImageLabel", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 24, 0.5, 0), Size = UDim2.fromOffset(72, 72), Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(LocalPlayer.UserId) .. "&w=150&h=150", ZIndex = 3, Parent = hero })
+		paint(heroAvatar, { BackgroundColor3 = "Element" })
+		corner(heroAvatar, "full")
+		stroke(heroAvatar, "Accent", 0.15, 2)
+		softGlow(heroAvatar, 36, 6, 0.25)
+		local hour = tonumber(os.date("%H")) or 12
+		local greeting = hour < 5 and "Good night" or hour < 12 and "Good morning" or hour < 18 and "Good afternoon" or "Good evening"
+		text({ Text = greeting .. ",", TextSize = 13, ColorKey = "SubText", Position = UDim2.fromOffset(112, 30), Size = UDim2.new(1, -300, 0, 16), ZIndex = 3, Parent = hero })
+		text({ Text = maskName(LocalPlayer.Name), TextSize = 26, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(110, 46), Size = UDim2.new(1, -300, 0, 32), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = hero })
+		local pills = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(112, 86), Size = UDim2.new(1, -130, 0, 24), ZIndex = 3, Parent = hero })
+		list(pills, 6, Enum.FillDirection.Horizontal)
+		pill(pills, executorName(), nil, 1, Color3.fromRGB(70, 210, 120))
+		local expiresPill = pill(pills, "Expires " .. tostring(opts.Expires or "Lifetime"), "clock", 2)
+		local baseSetExpires = Window.SetExpires
+		function Window:SetExpires(value)
+			baseSetExpires(Window, value)
+			expiresPill.Text = "Expires " .. tostring(value)
+		end
+		text({ Text = "SESSION", TextSize = 11, Weight = Enum.FontWeight.SemiBold, ColorKey = "SubText", TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 36), Size = UDim2.fromOffset(160, 14), ZIndex = 3, Parent = hero })
+		local sessionLabel = text({ Text = "00:00:00", TextSize = 28, Weight = Enum.FontWeight.Bold, TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 52), Size = UDim2.fromOffset(180, 32), ZIndex = 3, Parent = hero })
 
-		local grid = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = root })
-		local leftColumn = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(0.5, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = grid })
-		list(leftColumn, 12)
-		local rightColumn = create("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.5, 6, 0, 0), Size = UDim2.new(0.5, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = grid })
-		list(rightColumn, 12)
+		local stats = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 76), LayoutOrder = 2, Parent = root })
+		list(stats, 12, Enum.FillDirection.Horizontal)
+		local function stat(order, iconName, label)
+			local frame = panel(stats, UDim2.new(0.25, -9, 1, 0), order)
+			iconTile(frame, iconName, 34, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, 0), ZIndex = 3 })
+			local value = text({ Text = "-", TextSize = 18, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(58, 17), Size = UDim2.new(1, -66, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = frame })
+			text({ Text = label, TextSize = 12, ColorKey = "SubText", Position = UDim2.fromOffset(58, 40), Size = UDim2.new(1, -66, 0, 16), ZIndex = 3, Parent = frame })
+			return value, frame
+		end
+		local playersValue, playersFrame = stat(1, "users", "Players")
+		local playersTrack = create("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 2), ZIndex = 3, Parent = playersFrame })
+		paint(playersTrack, { BackgroundColor3 = "Element" })
+		local playersFill = create("Frame", { Size = UDim2.fromScale(0, 1), ZIndex = 4, Parent = playersTrack })
+		paint(playersFill, { BackgroundColor3 = "Accent" })
+		local pingValue = stat(2, "wifi", "Latency")
+		local fpsValue = stat(3, "activity", "Framerate")
+		local regionValue = stat(4, "globe", "Region")
 
-		local server = card(leftColumn, 238, 1, Color3.fromRGB(40, 200, 120), 90, bottomGlow)
-		header(server, "Server", "Information on the session you're currently in")
-		local playersSub = tile(server, 0, 0, 50, "Players", "")
-		local maxSub = tile(server, 1, 0, 50, "Maximum Players", Players.MaxPlayers .. " players can join this server")
-		local pingSub = tile(server, 0, 1, 50, "Latency", "")
-		local regionSub = tile(server, 1, 1, 50, "Server Region", "...")
-		local timeSub = tile(server, 0, 2, 50, "In server for", "")
-		tile(server, 1, 2, 50, "Join Script", "Tap to copy join script", function()
+		local bottom = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 214), LayoutOrder = 3, Parent = root })
+		local server = panel(bottom, UDim2.new(0.55, -7, 1, 0))
+		panelHeader(server, "Server", "server")
+		local infoHolder = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 52), Size = UDim2.new(1, -28, 0, 96), ZIndex = 3, Parent = server })
+		list(infoHolder, 0)
+		local function infoRow(order, label, value)
+			local row = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 32), LayoutOrder = order, ZIndex = 3, Parent = infoHolder })
+			text({ Text = label, TextSize = 13, ColorKey = "SubText", Size = UDim2.new(0.4, 0, 1, 0), ZIndex = 3, Parent = row })
+			local valueLabel = text({ Text = value, TextSize = 13, Weight = Enum.FontWeight.Medium, TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0.6, 0, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = row })
+			if order < 3 then
+				fadeLine(row, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 1), ZIndex = 3 }, "both")
+			end
+			return valueLabel
+		end
+		local gameLabel = infoRow(1, "Game", "...")
+		local jobId = tostring(game.JobId)
+		infoRow(2, "Server", jobId ~= "" and (jobId:sub(1, 8) .. "...") or "Studio")
+		infoRow(3, "Joined at", os.date("%H:%M"))
+		task.spawn(function()
+			local ok, info = pcall(function()
+				return cloneref(game:GetService("MarketplaceService")):GetProductInfo(game.PlaceId)
+			end)
+			gameLabel.Text = ok and info and info.Name or tostring(game.PlaceId)
+		end)
+		local actions = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -14), Size = UDim2.new(1, -28, 0, 34), ZIndex = 3, Parent = server })
+		local TeleportService = cloneref(game:GetService("TeleportService"))
+		actionButton(actions, "Rejoin", "rotate-cw", false, UDim2.new(1 / 3, -4, 1, 0), UDim2.fromScale(0, 0), function()
+			if #Players:GetPlayers() <= 1 then
+				TeleportService:Teleport(game.PlaceId, LocalPlayer)
+			else
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+			end
+		end)
+		actionButton(actions, "Hop", "shuffle", false, UDim2.new(1 / 3, -4, 1, 0), UDim2.new(1 / 3, 2, 0, 0), function()
+			task.spawn(function()
+				local ok, body = pcall(function()
+					return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")
+				end)
+				local decoded = ok and select(2, pcall(HttpService.JSONDecode, HttpService, body))
+				local candidates = {}
+				if type(decoded) == "table" and type(decoded.data) == "table" then
+					for _, entry in ipairs(decoded.data) do
+						if entry.id ~= game.JobId and tonumber(entry.playing) and tonumber(entry.maxPlayers) and entry.playing < entry.maxPlayers then
+							table.insert(candidates, entry.id)
+						end
+					end
+				end
+				if #candidates == 0 then
+					Library:Notify({ Title = "Server Hop", Text = "no other server found", Type = "warning", Duration = 3 })
+					return
+				end
+				Library:Notify({ Title = "Server Hop", Text = "teleporting...", Type = "info", Duration = 3 })
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, candidates[math.random(1, #candidates)], LocalPlayer)
+			end)
+		end)
+		actionButton(actions, "Copy", "copy", false, UDim2.new(1 / 3, -4, 1, 0), UDim2.new(2 / 3, 4, 0, 0), function()
 			local script = string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game:GetService("Players").LocalPlayer)', game.PlaceId, game.JobId)
 			local ok = pcall(setclipboard, script)
 			Library:Notify({ Title = "Server", Text = ok and "join script copied" or "clipboard not supported", Type = ok and "success" or "error", Duration = 2 })
 		end)
 
-		local discord = card(leftColumn, 88, 2, Color3.fromRGB(88, 101, 242), 0, sideGlow)
-		text({ Text = "Discord", TextSize = 22, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(18, 16), Size = UDim2.new(1, -36, 0, 26), ZIndex = 2, Parent = discord })
-		text({ Text = homeOpts.DiscordText or "Tap to join the Discord Server", TextSize = 14, ColorKey = "SubText", Position = UDim2.fromOffset(18, 46), Size = UDim2.new(1, -36, 0, 18), ZIndex = 2, Parent = discord })
-		icon("arrow-up-right", 18, "Text", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 16), ZIndex = 2, Parent = discord })
-		local discordHit = create("TextButton", { Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 5, Parent = discord })
-		local discordStroke = discord:FindFirstChildOfClass("UIStroke")
-		hover(discordHit, function()
-			discordStroke.Color = Color3.fromRGB(88, 101, 242)
+		local right = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0.45, -7, 1, 0), Parent = bottom })
+		local blurple = Color3.fromRGB(88, 101, 242)
+		local discord = panel(right, UDim2.new(1, 0, 0, 100))
+		local discordTint = create("Frame", { BackgroundColor3 = blurple, Size = UDim2.fromScale(1, 1), Parent = discord })
+		create("UIGradient", { Rotation = 20, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(0.6, 0.85), NumberSequenceKeypoint.new(1, 0.95) }), Parent = discordTint })
+		ring(discord, 150, UDim2.new(1, -10, 1, 0), 0.75, blurple)
+		ring(discord, 90, UDim2.new(1, -10, 1, 0), 0.6, blurple)
+		local discordIcon = create("Frame", { BackgroundColor3 = blurple, Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(32, 32), ZIndex = 3, Parent = discord })
+		corner(discordIcon, 10)
+		icon("message-circle", 17, "Text", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 4, Parent = discordIcon })
+		text({ Text = homeOpts.DiscordTitle or "Join the community", TextSize = 15, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(58, 16), Size = UDim2.new(1, -110, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = discord })
+		local inviteCode = tostring(homeOpts.Discord or ""):match("([%w%-_]+)/?$") or ""
+		text({ Text = "discord.gg/" .. inviteCode, TextSize = 12, ColorKey = "SubText", Position = UDim2.fromOffset(58, 34), Size = UDim2.new(1, -110, 0, 14), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Parent = discord })
+		local join = create("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = blurple, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 16, 1, -14), Size = UDim2.new(1, -32, 0, 30), ZIndex = 3, Parent = discord })
+		corner(join, 8)
+		create("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 200)), Parent = join })
+		local joinRow = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 4, Parent = join })
+		list(joinRow, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+		text({ Text = "Join Server", TextSize = 13, Weight = Enum.FontWeight.SemiBold, ColorKey = false, TextColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = 1, ZIndex = 4, Parent = joinRow })
+		local arrow = create("ImageLabel", { BackgroundTransparency = 1, ImageColor3 = Color3.new(1, 1, 1), Size = UDim2.fromOffset(13, 13), LayoutOrder = 2, ZIndex = 4, Parent = joinRow })
+		applyIcon(arrow, "arrow-up-right")
+		hover(join, function()
+			tween(join, { BackgroundTransparency = 0.15 }, 0.12)
 		end, function()
-			discordStroke.Color = Theme.Border
+			tween(join, { BackgroundTransparency = 0 }, 0.15)
 		end)
-		discordHit.MouseButton1Click:Connect(function()
+		join.MouseButton1Click:Connect(function()
 			Library:JoinDiscord(homeOpts.Discord)
 		end)
 
-		local executorName = "Unknown"
-		pcall(function()
-			if identifyexecutor then
-				executorName = (identifyexecutor())
-			elseif getexecutorname then
-				executorName = getexecutorname()
+		local friends = panel(right, UDim2.new(1, 0, 1, -112))
+		friends.Position = UDim2.fromOffset(0, 112)
+		text({ Text = "FRIENDS", TextSize = 11, Weight = Enum.FontWeight.SemiBold, ColorKey = "SubText", Position = UDim2.fromOffset(16, 12), Size = UDim2.new(1, -32, 0, 14), ZIndex = 3, Parent = friends })
+		local friendRow = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 32), Size = UDim2.new(1, 0, 1, -40), ZIndex = 3, Parent = friends })
+		local function friendStat(index, label)
+			local cell = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromScale((index - 1) / 3, 0), Size = UDim2.fromScale(1 / 3, 1), ZIndex = 3, Parent = friendRow })
+			local value = text({ Text = "-", TextSize = 20, Weight = Enum.FontWeight.Bold, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 24), ZIndex = 3, Parent = cell })
+			text({ Text = label, TextSize = 11, ColorKey = "SubText", TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 24), Size = UDim2.new(1, 0, 0, 14), ZIndex = 3, Parent = cell })
+			if index > 1 then
+				fadeLine(cell, { Position = UDim2.fromOffset(0, 2), Size = UDim2.new(0, 1, 1, -4), ZIndex = 3 }, "both")
 			end
-		end)
-		local executor = card(rightColumn, 88, 1, "Accent", 0, sideGlow)
-		text({ Text = tostring(executorName), TextSize = 22, Weight = Enum.FontWeight.Bold, Position = UDim2.fromOffset(18, 16), Size = UDim2.new(1, -36, 0, 26), ZIndex = 2, Parent = executor })
-		text({ Text = homeOpts.ExecutorText or "Your executor seems to support this script.", TextSize = 14, ColorKey = "SubText", TextWrapped = true, Position = UDim2.fromOffset(18, 46), Size = UDim2.new(1, -36, 0, 34), TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 2, Parent = executor })
-
-		local friends = card(rightColumn, 238, 2, Color3.fromRGB(230, 170, 40), 90, bottomGlow)
-		header(friends, "Friends", "Find out what your friends are currently doing")
-		local inServerSub = tile(friends, 0, 0, 79, "In Server", "...")
-		local offlineSub = tile(friends, 1, 0, 79, "Offline", "...")
-		local onlineSub = tile(friends, 0, 1, 79, "Online", "...")
-		local allSub = tile(friends, 1, 1, 79, "All", "...")
-
-		local function plural(count, word)
-			return count == 0 and ("no " .. word .. "s") or (count .. " " .. word .. (count == 1 and "" or "s"))
+			return value
 		end
+		local inServerValue = friendStat(1, "In server")
+		local onlineValue = friendStat(2, "Online")
+		local totalValue = friendStat(3, "Total")
+		paint(inServerValue, { TextColor3 = "Accent" })
+
+		if type(homeOpts.Changelog) == "table" and #homeOpts.Changelog > 0 then
+			local changelog = panel(root, UDim2.new(1, 0, 0, 0), 4)
+			changelog.AutomaticSize = Enum.AutomaticSize.Y
+			panelHeader(changelog, "Changelog", "scroll-text")
+			local entries = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 50), Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 3, Parent = changelog })
+			padding(entries, 18, 18, 0, 16)
+			list(entries, 12)
+			for index, entry in ipairs(homeOpts.Changelog) do
+				local block = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = index, ZIndex = 3, Parent = entries })
+				list(block, 6)
+				local head = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 22), LayoutOrder = 0, ZIndex = 3, Parent = block })
+				list(head, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+				local tag = text({ Text = tostring(entry.Version or ""), TextSize = 12, Weight = Enum.FontWeight.Bold, ColorKey = "Accent", TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0.82, Size = UDim2.fromOffset(0, 22), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = 1, ZIndex = 3, Parent = head })
+				paint(tag, { BackgroundColor3 = "Accent" })
+				corner(tag, 6)
+				padding(tag, 9, 9, 0, 0)
+				text({ Text = tostring(entry.Date or ""), TextSize = 12, ColorKey = "SubText", Size = UDim2.fromScale(0, 1), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = 2, ZIndex = 3, Parent = head })
+				for lineIndex, line in ipairs(entry.Entries or {}) do
+					local row = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = lineIndex, ZIndex = 3, Parent = block })
+					local dot = create("Frame", { Position = UDim2.fromOffset(4, 7), Size = UDim2.fromOffset(5, 5), ZIndex = 3, Parent = row })
+					paint(dot, { BackgroundColor3 = "Accent" })
+					corner(dot, "full")
+					text({ Text = tostring(line), TextSize = 13, ColorKey = "SubText", TextWrapped = true, Position = UDim2.fromOffset(18, 0), Size = UDim2.new(1, -18, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 3, Parent = row })
+				end
+			end
+		end
+
 		local function refreshInServer()
 			task.spawn(function()
 				local count = 0
@@ -2789,29 +3000,28 @@ function Library:CreateWindow(opts)
 						end
 					end
 				end
-				inServerSub.Text = plural(count, "friend")
+				inServerValue.Text = tostring(count)
 			end)
 		end
 		task.spawn(function()
-			local total, online = nil, nil
+			local total, onlineCount = nil, nil
 			pcall(function()
-				local pages = Players:GetFriendsAsync(LocalPlayer.UserId)
+				local friendPages = Players:GetFriendsAsync(LocalPlayer.UserId)
 				local count = 0
 				while true do
-					count += #pages:GetCurrentPage()
-					if pages.IsFinished then
+					count += #friendPages:GetCurrentPage()
+					if friendPages.IsFinished then
 						break
 					end
-					pages:AdvanceToNextPageAsync()
+					friendPages:AdvanceToNextPageAsync()
 				end
 				total = count
 			end)
 			pcall(function()
-				online = #LocalPlayer:GetFriendsOnline(200)
+				onlineCount = #LocalPlayer:GetFriendsOnline(200)
 			end)
-			allSub.Text = total and plural(total, "friend") or "unavailable"
-			onlineSub.Text = online and plural(online, "friend") or "unavailable"
-			offlineSub.Text = (total and online) and plural(math.max(total - online, 0), "friend") or "unavailable"
+			totalValue.Text = total and tostring(total) or "-"
+			onlineValue.Text = onlineCount and tostring(onlineCount) or "-"
 		end)
 		refreshInServer()
 		connect(Players.PlayerAdded, refreshInServer)
@@ -2819,24 +3029,24 @@ function Library:CreateWindow(opts)
 			task.defer(refreshInServer)
 		end)
 		task.spawn(function()
-			local region = "Unknown"
+			local region = "-"
 			pcall(function()
 				region = cloneref(game:GetService("LocalizationService")):GetCountryRegionForPlayerAsync(LocalPlayer)
 			end)
-			regionSub.Text = tostring(region)
+			regionValue.Text = tostring(region)
 		end)
 
+		local frames = 0
 		local function update()
-			local count = #Players:GetPlayers()
-			playersSub.Text = count .. " playing"
-			maxSub.Text = Players.MaxPlayers .. " players can join this server"
+			local count, maxPlayers = #Players:GetPlayers(), math.max(Players.MaxPlayers, 1)
+			playersValue.Text = count .. " / " .. maxPlayers
+			tween(playersFill, { Size = UDim2.fromScale(math.clamp(count / maxPlayers, 0, 1), 1) }, 0.3)
 			local ping = 0
 			pcall(function()
 				ping = math.floor(LocalPlayer:GetNetworkPing() * 1000 + 0.5)
 			end)
-			pingSub.Text = ping .. "ms"
-			local elapsed = math.floor(workspace.DistributedGameTime)
-			timeSub.Text = string.format("%02d:%02d:%02d", elapsed // 3600, elapsed // 60 % 60, elapsed % 60)
+			pingValue.Text = ping .. " ms"
+			sessionLabel.Text = formatClock(workspace.DistributedGameTime)
 		end
 		update()
 		local running = false
@@ -2845,11 +3055,19 @@ function Library:CreateWindow(opts)
 				return
 			end
 			running = true
+			local counter = RunService.RenderStepped:Connect(function()
+				frames += 1
+			end)
 			task.spawn(function()
+				local last = os.clock()
 				while Library.Open and page.Frame.Visible and not Library.Unloaded do
 					update()
 					task.wait(1)
+					local now = os.clock()
+					fpsValue.Text = math.floor(frames / (now - last) + 0.5) .. " fps"
+					frames, last = 0, now
 				end
+				counter:Disconnect()
 				running = false
 			end)
 		end
@@ -2901,7 +3119,7 @@ local function setBlur(state)
 	if state and Library.BlurEnabled then
 		if not Blur or not Blur.Parent then
 			Blur = Instance.new("BlurEffect")
-			Blur.Name = "CommissionBlur"
+			Blur.Name = "FokusBlur"
 			Blur.Size = 0
 			Blur.Parent = Lighting
 		end
@@ -2953,31 +3171,42 @@ function Library:Toggle(value)
 	end
 end
 
-local NOTIFY_COLORS = {
-	info = function()
+local NOTIFY_TYPES = {
+	info = { Icon = "info", Color = function()
 		return Theme.Accent
-	end,
-	success = function()
+	end },
+	success = { Icon = "circle-check", Color = function()
 		return Color3.fromRGB(70, 210, 120)
-	end,
-	warning = function()
+	end },
+	warning = { Icon = "triangle-alert", Color = function()
 		return Color3.fromRGB(240, 180, 40)
-	end,
-	error = function()
+	end },
+	error = { Icon = "circle-x", Color = function()
 		return Color3.fromRGB(240, 70, 80)
-	end,
+	end },
 }
-local NOTIFY_ICONS = { info = "info", success = "circle-check", warning = "triangle-alert", error = "circle-x" }
-local NotifyHolder = create("Frame", {
-	BackgroundTransparency = 1,
-	AnchorPoint = Vector2.new(1, 1),
-	Position = UDim2.new(1, -16, 1, -16),
-	Size = UDim2.fromOffset(300, 600),
-	Parent = Library.HudGui,
-})
-list(NotifyHolder, 8, Enum.FillDirection.Vertical, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Bottom)
-scaled(NotifyHolder)
+Library.NotifyPosition = "Bottom Right"
+Library.NotifyDuration = 4
+Library.NotifySound = true
+Library.NotifyMax = 6
 
+local NotifyHolder = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(310, 640), Parent = Library.HudGui })
+local NotifyLayout = list(NotifyHolder, 10)
+scaled(NotifyHolder)
+local ActiveNotifs = {}
+
+function Library:SetNotifyPosition(position)
+	Library.NotifyPosition = position or "Bottom Right"
+	local top = Library.NotifyPosition:find("Top") ~= nil
+	local left = Library.NotifyPosition:find("Left") ~= nil
+	NotifyHolder.AnchorPoint = Vector2.new(left and 0 or 1, top and 0 or 1)
+	NotifyHolder.Position = UDim2.new(left and 0 or 1, left and 18 or -18, top and 0 or 1, top and 18 or -18)
+	NotifyLayout.HorizontalAlignment = left and Enum.HorizontalAlignment.Left or Enum.HorizontalAlignment.Right
+	NotifyLayout.VerticalAlignment = top and Enum.VerticalAlignment.Top or Enum.VerticalAlignment.Bottom
+end
+Library:SetNotifyPosition(Library.NotifyPosition)
+
+local notifyOrder = 0
 function Library:Notify(opts, duration, kind)
 	if type(opts) ~= "table" then
 		opts = { Text = tostring(opts), Duration = duration, Type = kind }
@@ -2987,45 +3216,120 @@ function Library:Notify(opts, duration, kind)
 	if kindName == "persistent" then
 		kindName = "info"
 	end
-	local accent = (NOTIFY_COLORS[kindName] or NOTIFY_COLORS.info)()
-	local card = create("Frame", { Size = UDim2.fromOffset(290, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Parent = NotifyHolder })
-	local inner = create("Frame", { Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.fromOffset(320, 0), Parent = card })
+	local info = NOTIFY_TYPES[kindName] or NOTIFY_TYPES.info
+	local color = info.Color()
+	local left = Library.NotifyPosition:find("Left") ~= nil
+	local top = Library.NotifyPosition:find("Top") ~= nil
+	notifyOrder += 1
+
+	local card = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(300, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = top and -notifyOrder or notifyOrder, Parent = NotifyHolder })
+	local offscreen = UDim2.fromOffset(left and -330 or 330, 0)
+	local inner = create("Frame", { Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = offscreen, Parent = card })
 	paint(inner, { BackgroundColor3 = "Groupbox" })
-	corner(inner, 6)
-	local s = create("UIStroke", { Color = accent, Transparency = 0.5, Parent = inner })
-	padding(inner, 14, 34, 10, 12)
-	local bar = create("Frame", { BackgroundColor3 = accent, Position = UDim2.new(0, -14, 0, -10), Size = UDim2.new(0, 3, 1, 22), Parent = inner })
-	corner(bar, 2)
-	local iconImage = create("ImageLabel", { BackgroundTransparency = 1, ImageColor3 = accent, Position = UDim2.fromOffset(0, 1), Size = UDim2.fromOffset(16, 16), Parent = inner })
-	applyIcon(iconImage, NOTIFY_ICONS[kindName] or "info")
-	local body = create("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 0), Size = UDim2.new(1, -24, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = inner })
-	list(body, 2)
-	text({ Text = opts.Title or Library.Name, TextSize = 14, Weight = Enum.FontWeight.SemiBold, Size = UDim2.new(1, 0, 0, 18), LayoutOrder = 1, Parent = body })
-	text({ Text = opts.Text or "", TextSize = 13, ColorKey = "SubText", TextWrapped = true, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = body })
-	local progress = create("Frame", { BackgroundColor3 = accent, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, -14, 1, 12), Size = UDim2.new(1, 48, 0, 2), Visible = not persistent, Parent = inner })
+	corner(inner, 10)
+	create("UIStroke", { Color = color, Transparency = 0.55, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = inner })
+	local tint = create("Frame", { BackgroundColor3 = color, Size = UDim2.fromScale(1, 1), Parent = inner })
+	corner(tint, 10)
+	create("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(0.5, 0.97), NumberSequenceKeypoint.new(1, 1) }), Parent = tint })
+	local body = create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 2, Parent = inner })
+	padding(body, 58, 36, 13, 16)
+	list(body, 3)
+
+	local tile = create("Frame", { BackgroundColor3 = color, BackgroundTransparency = 0.82, Position = UDim2.fromOffset(14, 13), Size = UDim2.fromOffset(32, 32), ZIndex = 2, Parent = inner })
+	corner(tile, 9)
+	local iconImage = create("ImageLabel", { BackgroundTransparency = 1, ImageColor3 = color, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(16, 16), ZIndex = 3, Parent = tile })
+	applyIcon(iconImage, opts.Icon or info.Icon)
+
+	local titleRow = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 18), LayoutOrder = 1, ZIndex = 2, Parent = body })
+	text({ Text = opts.Title or Library.Name, TextSize = 14, Weight = Enum.FontWeight.SemiBold, Size = UDim2.new(1, -40, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 2, Parent = titleRow })
+	text({ Text = persistent and "pinned" or "now", TextSize = 11, ColorKey = "Disabled", TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 40, 1, 0), ZIndex = 2, Parent = titleRow })
+	if opts.Text and opts.Text ~= "" then
+		text({ Text = opts.Text, TextSize = 13, ColorKey = "SubText", TextWrapped = true, Size = UDim2.fromScale(1, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, ZIndex = 2, Parent = body })
+	end
+
 	local closed = false
 	local function close()
 		if closed then
 			return
 		end
 		closed = true
-		tween(inner, { Position = UDim2.fromOffset(320, 0) }, 0.25)
+		ActiveNotifs[card] = nil
+		tween(inner, { Position = offscreen }, 0.25)
 		task.delay(0.26, function()
 			card:Destroy()
 		end)
 	end
-	local closeButton = create("ImageButton", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 24, 0, 0), Size = UDim2.fromOffset(14, 14), Parent = inner })
+
+	if type(opts.Buttons) == "table" and #opts.Buttons > 0 then
+		local row = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = 3, ZIndex = 2, Parent = body })
+		padding(row, 0, 0, 8, 0)
+		list(row, 6, Enum.FillDirection.Horizontal)
+		for index, item in ipairs(opts.Buttons) do
+			local first = index == 1
+			local button = text({ Class = "TextButton", Text = item.Text or "", TextSize = 12, Weight = Enum.FontWeight.SemiBold, ColorKey = (not first) and "Text" or false, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, AutoButtonColor = false, BackgroundTransparency = 0, Size = UDim2.new(1 / #opts.Buttons, -6, 1, 0), LayoutOrder = index, ZIndex = 3, Parent = row })
+			if first then
+				button.BackgroundColor3 = color
+			else
+				paint(button, { BackgroundColor3 = "Element" })
+			end
+			corner(button, 6)
+			button.MouseButton1Click:Connect(function()
+				if item.Func then
+					task.spawn(item.Func)
+				end
+				close()
+			end)
+		end
+	end
+
+	local progressTrack = create("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), ZIndex = 3, Parent = inner })
+	local progress = create("Frame", { BackgroundColor3 = color, Size = UDim2.fromScale(1, 1), Visible = not persistent, ZIndex = 3, Parent = progressTrack })
+
+	local closeButton = create("ImageButton", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 14), Size = UDim2.fromOffset(14, 14), ZIndex = 4, Parent = inner })
 	paint(closeButton, { ImageColor3 = "SubText" })
 	applyIcon(closeButton, "x")
 	closeButton.MouseButton1Click:Connect(close)
-	tween(inner, { Position = UDim2.fromOffset(0, 0) }, 0.3, Enum.EasingStyle.Quart)
+
+	ActiveNotifs[card] = notifyOrder
+	local count, oldest, oldestOrder = 0, nil, math.huge
+	for other, order in pairs(ActiveNotifs) do
+		count += 1
+		if order < oldestOrder then
+			oldest, oldestOrder = other, order
+		end
+	end
+	if count > Library.NotifyMax and oldest then
+		ActiveNotifs[oldest] = nil
+		oldest:Destroy()
+	end
+
+	if Library.NotifySound and opts.Sound ~= false then
+		pcall(function()
+			local sound = Instance.new("Sound")
+			sound.SoundId = opts.SoundId or "rbxasset://sounds/electronicpingshort.wav"
+			sound.Volume = 0.35
+			sound.Parent = Library.HudGui
+			sound:Play()
+			sound.Ended:Once(function()
+				sound:Destroy()
+			end)
+			task.delay(4, function()
+				if sound.Parent then
+					sound:Destroy()
+				end
+			end)
+		end)
+	end
+
+	tween(inner, { Position = UDim2.new() }, 0.35, Enum.EasingStyle.Quart)
 	if not persistent then
-		local life = opts.Duration or 4
-		tween(progress, { Size = UDim2.new(0, 0, 0, 2) }, life, Enum.EasingStyle.Linear)
+		local life = opts.Duration or Library.NotifyDuration
+		tween(progress, { Size = UDim2.fromScale(0, 1) }, life, Enum.EasingStyle.Linear)
 		task.delay(life, close)
 	end
 	return { Close = close }
 end
+
 
 local function hudPanel(titleText, position)
 	local frame = create("Frame", { Position = position, Size = UDim2.fromOffset(200, 0), AutomaticSize = Enum.AutomaticSize.Y, Visible = false, Parent = Library.HudGui })
@@ -3509,6 +3813,52 @@ function Library:BuildSettings(owner)
 	interface:AddButton({ Text = "Unload", Func = function()
 		Library:Unload()
 	end })
+
+	local notifBox = owner:AddLeftGroupbox("Notifications", "bell")
+	notifBox:AddDropdown("__notif_position", { Text = "Position", Values = { "Bottom Right", "Top Right", "Bottom Left", "Top Left" }, Default = Library.NotifyPosition, Callback = function(value)
+		if value then
+			Library:SetNotifyPosition(value)
+		end
+	end })
+	notifBox:AddSlider("__notif_duration", { Text = "Duration", Min = 1, Max = 15, Default = Library.NotifyDuration, Suffix = "s", Callback = function(value)
+		Library.NotifyDuration = value
+	end })
+	notifBox:AddSlider("__notif_max", { Text = "Max On Screen", Min = 1, Max = 10, Default = Library.NotifyMax, Callback = function(value)
+		Library.NotifyMax = value
+	end })
+	notifBox:AddToggle("__notif_sound", { Text = "Sound", Default = Library.NotifySound, Callback = function(value)
+		Library.NotifySound = value
+	end })
+	notifBox:AddDivider("test")
+	notifBox:AddButtons({
+		{ Text = "Info", Func = function()
+			Library:Notify({ Title = "Information", Text = "This is an info notification.", Type = "info" })
+		end },
+		{ Text = "Success", Func = function()
+			Library:Notify({ Title = "Success", Text = "Config saved successfully.", Type = "success" })
+		end },
+	})
+	notifBox:AddButtons({
+		{ Text = "Warning", Func = function()
+			Library:Notify({ Title = "Warning", Text = "Target is out of range.", Type = "warning" })
+		end },
+		{ Text = "Error", Func = function()
+			Library:Notify({ Title = "Error", Text = "Failed to load the module.", Type = "error" })
+		end },
+	})
+	notifBox:AddButtons({
+		{ Text = "Persistent", Func = function()
+			Library:Notify({ Title = "Pinned", Text = "Stays until you close it.", Type = "persistent" })
+		end },
+		{ Text = "With Actions", Func = function()
+			Library:Notify({ Title = "Confirm", Text = "Do you want to load your autoload config?", Type = "persistent", Buttons = {
+				{ Text = "Load", Func = function()
+					Library:LoadAutoload()
+				end },
+				{ Text = "Dismiss" },
+			} })
+		end },
+	})
 
 	local configBox = owner:AddRightGroupbox("Configs", "folder")
 	configBox:AddInput("__cfg_name", { Text = "Config Name", Placeholder = "name" })
